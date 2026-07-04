@@ -45,7 +45,7 @@ Create `../.env` (or set these on your deployment platform):
 ```env
 AZURE_ENDPOINT=https://your-resource.openai.azure.com/
 OPENAI_API_KEY=your-azure-api-key
-OPENAI_API_VERSION=2025-04-01-preview
+OPENAI_API_VERSION=
 AZURE_DEPLOYMENT=gpt-4o
 ```
 
