@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VerifAI — AI Hallucination Detector</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f8f7f4;
+      color: #1a1a1a;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e5e3dd;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+
+    header p {
+      font-size: 13px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .badge {
+      background: #f0f0eb;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 12px;
+      color: #555;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 24px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e5e3dd;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .card h2 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #333;
+    }
+
+    textarea {
+      width: 100%;
+      height: 180px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 14px;
+      font-family: inherit;
+      line-height: 1.6;
+      resize: vertical;
+      outline: none;
+      background: #fafaf8;
+      transition: border-color 0.15s;
+    }
+
+    textarea:focus { border-color: #888; }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    select {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 14px;
+      background: #fff;
+      cursor: pointer;
+      outline: none;
+    }
+
+    button {
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button:hover { background: #333; }
+    button:disabled { background: #999; cursor: not-allowed; }
+
+    .spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #ccc;
+      border-top-color: #333;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .score-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      border: 1px solid #e5e3dd;
+    }
+
+    .score-number {
+      font-size: 36px;
+      font-weight: 700;
+      min-width: 70px;
+    }
+
+    .score-high   { color: #1a7a3c; background: #edfaf3; border-color: #b8e6cb; }
+    .score-medium { color: #92600a; background: #fef8ec; border-color: #f0d9a0; }
+    .score-low    { color: #991b1b; background: #fef2f2; border-color: #fca5a5; }
+
+    .score-meta { font-size: 13px; color: #666; line-height: 1.8; }
+    .score-meta strong { color: #333; }
+
+    .annotated-text {
+      background: #fafaf8;
+      border: 1px solid #e5e3dd;
+      border-radius: 10px;
+      padding: 20px;
+      font-size: 14px;
+      line-height: 2;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .tag-verified   { background: #d1fae5; color: #065f46; border-radius: 4px; padding: 1px 6px; font-size: 12px; font-weight: 500; }
+    .tag-unverified { background: #fef9c3; color: #854d0e; border-radius: 4px; padding: 1px 6px; font-size: 12px; font-weight: 500; }
+    .tag-hallucinated { background: #fee2e2; color: #991b1b; border-radius: 4px; padding: 1px 6px; font-size: 12px; font-weight: 500; }
+
+    .claim-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .claim-item {
+      border: 1px solid #e5e3dd;
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .claim-item.verified   { border-left: 3px solid #16a34a; }
+    .claim-item.unverified { border-left: 3px solid #ca8a04; }
+    .claim-item.hallucinated { border-left: 3px solid #dc2626; }
+
+    .claim-status {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .verified   .claim-status { color: #16a34a; }
+    .unverified .claim-status { color: #ca8a04; }
+    .hallucinated .claim-status { color: #dc2626; }
+
+    .claim-text { color: #333; margin-bottom: 4px; }
+    .claim-evidence { color: #666; font-size: 12px; }
+    .claim-source a { color: #2563eb; font-size: 12px; text-decoration: none; }
+    .claim-source a:hover { text-decoration: underline; }
+
+    .error-box {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      border-radius: 8px;
+      padding: 14px 16px;
+      color: #991b1b;
+      font-size: 14px;
+    }
+
+    #results { display: none; }
+
+    .example-btn {
+      background: #f0f0eb;
+      color: #333;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .example-btn:hover { background: #e5e3dd; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>VerifAI</h1>
+    <p>AI-generated text hallucination detector</p>
+  </div>
+  <span class="badge">Beta</span>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h2>Paste AI-generated text to verify</h2>
+    <textarea id="input-text"
+      placeholder="Paste any AI-generated text here — legal research, financial analysis, news summaries..."></textarea>
+
+    <div class="controls">
+      <select id="domain">
+        <option value="financial">Financial</option>
+        <option value="legal">Legal</option>
+        <option value="general">General</option>
+      </select>
+      <button id="verify-btn" onclick="verify()">Verify claims</button>
+      <div class="spinner" id="spinner"></div>
+      <button class="example-btn" onclick="loadExample()">Load example</button>
+    </div>
+  </div>
+
+  <div id="results">
+
+    <div id="score-bar" class="score-bar">
+      <div class="score-number" id="score-number">—</div>
+      <div class="score-meta" id="score-meta"></div>
+    </div>
+
+    <div class="card">
+      <h2>Annotated text</h2>
+      <div class="annotated-text" id="annotated-text"></div>
+    </div>
+
+    <div class="card">
+      <h2>Claim-by-claim results</h2>
+      <div class="claim-list" id="claim-list"></div>
+    </div>
+
+  </div>
+
+  <div id="error-box" class="error-box" style="display:none"></div>
+
+</div>
+
+<script>
+  const EXAMPLE_TEXT = `Apple reported record revenue of $119.6 billion in Q1 2024, driven by strong iPhone sales and services growth. The company's net income reached $33.9 billion for the quarter.
+
+Meanwhile, according to our analysis, Microsoft's Q1 2024 revenue was $87 billion, representing 23% year-over-year growth in their cloud division.
+
+Goldman Sachs reported quarterly earnings of $4.2 billion in Q1 2024, beating analyst expectations by approximately 15%.
+
+DataTech Corp announced revenues of $45 billion in Q1 2024, making it the fastest growing technology company in history.`;
+
+  function loadExample() {
+    document.getElementById("input-text").value = EXAMPLE_TEXT;
+    document.getElementById("domain").value = "financial";
+  }
+
+  function setLoading(loading) {
+    document.getElementById("verify-btn").disabled = loading;
+    document.getElementById("spinner").style.display = loading ? "block" : "none";
+    if (loading) {
+      document.getElementById("results").style.display = "none";
+      document.getElementById("error-box").style.display = "none";
+    }
+  }
+
+  function showError(msg) {
+    const box = document.getElementById("error-box");
+    box.textContent = msg;
+    box.style.display = "block";
+  }
+
+  function renderScore(trustScore, claimsChecked, hallucinatedCount) {
+    const pct = Math.round(trustScore * 100);
+    const scoreEl = document.getElementById("score-number");
+    const metaEl = document.getElementById("score-meta");
+    const barEl = document.getElementById("score-bar");
+
+    scoreEl.textContent = pct + "%";
+    barEl.className = "score-bar " + (
+      pct >= 80 ? "score-high" :
+      pct >= 50 ? "score-medium" : "score-low"
+    );
+
+    const verified = claimsChecked - hallucinatedCount;
+    metaEl.innerHTML =
+      "<strong>Trust score</strong><br>" +
+      claimsChecked + " claims checked &nbsp;&middot;&nbsp;" +
+      hallucinatedCount + " hallucinated &nbsp;&middot;&nbsp;" +
+      verified + " verified or unverified";
+  }
+
+  function renderAnnotated(text) {
+    if (!text) {
+      document.getElementById("annotated-text").textContent = "No annotated text returned.";
+      return;
+    }
+    var html = text
+      .replace(/\[🟢 VERIFIED\]/g,
+        '<span class="tag-verified">&#10003; verified</span>')
+      .replace(/\[🟡 UNVERIFIED\]/g,
+        '<span class="tag-unverified">? unverified</span>')
+      .replace(/\[🔴 HALLUCINATED[^\]]*\]/g,
+        '<span class="tag-hallucinated">&#10007; hallucinated</span>');
+    document.getElementById("annotated-text").innerHTML = html;
+  }
+
+  function renderClaims(results) {
+    var container = document.getElementById("claim-list");
+    container.innerHTML = "";
+    if (!results || !results.length) {
+      container.textContent = "No claim results returned.";
+      return;
+    }
+
+    results.forEach(function(r) {
+      var status = (r.status || "UNVERIFIED").toLowerCase();
+      if (status === "verified") status = "verified";
+      else if (status === "hallucinated") status = "hallucinated";
+      else status = "unverified";
+
+      var statusLabel =
+        status === "verified" ? "&#10003; Verified" :
+        status === "hallucinated" ? "&#10007; Hallucinated" : "? Unverified";
+
+      var item = document.createElement("div");
+      item.className = "claim-item " + status;
+      item.innerHTML =
+        '<div class="claim-status">' + statusLabel + "</div>" +
+        '<div class="claim-text">' + escapeHtml(r.claim_text || "") + "</div>";
+
+      if (r.evidence) {
+        var evidence = document.createElement("div");
+        evidence.className = "claim-evidence";
+        evidence.textContent = r.evidence;
+        item.appendChild(evidence);
+      }
+
+      if (r.source_url) {
+        var source = document.createElement("div");
+        source.className = "claim-source";
+        source.innerHTML = '<a href="' + escapeHtml(r.source_url) + '" target="_blank">View source &rarr;</a>';
+        item.appendChild(source);
+      }
+
+      container.appendChild(item);
+    });
+  }
+
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  async function verify() {
+    var text = document.getElementById("input-text").value.trim();
+    if (!text) {
+      showError("Please enter some text to verify.");
+      return;
+    }
+
+    var domain = document.getElementById("domain").value;
+    setLoading(true);
+
+    try {
+      var response = await fetch("/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text, domain: domain })
+      });
+
+      var rawText = await response.text();
+
+      if (!response.ok) {
+        throw new Error("Server returned " + response.status + ": " + rawText.substring(0, 200));
+      }
+
+      var data;
+      try {
+        data = JSON.parse(rawText);
+      } catch(parseErr) {
+        throw new Error("Could not parse server response: " + rawText.substring(0, 200));
+      }
+
+      renderScore(data.trust_score, data.claims_checked, data.hallucinated_count);
+      renderAnnotated(data.annotated_text);
+      renderClaims(data.results);
+
+      document.getElementById("results").style.display = "block";
+
+    } catch (err) {
+      showError("Error: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    document.getElementById("input-text").addEventListener("keydown", function(e) {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) verify();
+    });
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,19 @@
+# Core LLM / Azure
+openai==2.42.0
+
+# LangGraph agents
+langgraph==1.2.6
+
+# Vector memory (RAG)
+chromadb==1.5.9
+
+# Web search tools
+ddgs==9.14.4
+
+# VerifAI API + week1/week3 FastAPI apps
+fastapi==0.138.0
+uvicorn[standard]==0.49.0
+pydantic==2.13.4
+
+# .env loading (optional; scripts also load .env manually)
+python-dotenv==1.2.2
